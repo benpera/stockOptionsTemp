@@ -1,4 +1,4 @@
-from dash import Dash, Input, Output, callback, dash_table
+from dash import Dash, Input, Output, callback, dash_table, html, State
 import pandas as pd
 import dash_bootstrap_components as dbc
 import dash_core_components as dcc
@@ -182,7 +182,14 @@ class StockDetail():
 
 
 #start of tradingView bits
-def tradingView():
+def tradingView(
+    mktCapMin = 5000000000,
+    div_yield_recent = 2,
+    StochK = 25,
+    StochD = 25,
+    macd_macd = 0,
+    macd_signal = 0,
+):
     global tradingViewTime
     startTime = time.time()
     filter = [
@@ -593,33 +600,87 @@ def saveAsSheet(bigDF):
 # -----------------------------------------------------------------------------------------------------------------------------------
 startTime = time.time()
 
-ListOfTickers = tradingView()
-print(ListOfTickers)
-# ListOfTickers = ['AAPL', 'MSFT', 'GM', 'CCL', 'META', 'BABA', 'IBM', 'AMD', 'NVDA', 'QCOM', 'CMG', 'WMT', 'CAT']
-# ListOfTickers = ['AMD']
-bigDF = df_builderList(ListOfTickers, daysOut_start, daysOut_end)
+# ListOfTickers = tradingView(mktCapMin, div_yield_recent, StochD, StochK, macd_macd, macd_signal)[:3]
+# print(ListOfTickers)
 
-# bigDF.to_excel("outputSingle.xlsx")
+# df = None
 
-# saveAsSheet(bigDF)
-# start Dash CODE
-# -----------------------------------------------------------------------------------------------------------------------------------
-# df = pd.read_csv('https://git.io/Juf1t')
-df = bigDF
+# filter options
+divYieldIputOptions = [1, 2, 3]
+tradingFilterValues = {
+    'mktCapMin': 5000000000,
+    'div_yield_recent': 2,
+    'StochK': 25,
+    'StochD': 25,
+    'macd_macd': 0,
+    'macd_signal': 0,
+}
 
 app = Dash(external_stylesheets=[dbc.themes.BOOTSTRAP])
 
 app.layout = dbc.Container([
     html.Div([
-        dcc.Dropdown(id='xaxis')]),
+        html.P('M:'),
+        dcc.Input(id='mktCapMin_input',
+                type='number',
+                value=tradingFilterValues['mktCapMin']),
+        html.P('d:'),
+        dcc.Dropdown(id='div_yield_recent_input',
+                options=divYieldIputOptions,
+                value=tradingFilterValues['div_yield_recent']),
+        dcc.Input(id='StochD_input',
+                type='number',
+                value=tradingFilterValues['StochD']),
+        dcc.Input(id='StochK_input',
+                type='number',
+                value=tradingFilterValues['StochK']),
+        dcc.Input(id='macd_macd_input',
+                type='number',
+                value=tradingFilterValues['macd_macd']),
+        dcc.Input(id='macd_signal_input',
+                type='number',
+                value=tradingFilterValues['macd_signal']),
+        html.Button('Submit', id='submit_btn', n_clicks=0)
+    ]),
+   
     dbc.Label('Click a cell in the table:'),
-    dash_table.DataTable(df.to_dict('records'),[{"name": i, "id": i} for i in df.columns], id='tbl'),
+    html.Div(id='tbl'),
+    # dash_table.DataTable(df.to_dict('records'),[{"name": i, "id": i} for i in df.columns], id='tbl'),
     dbc.Alert(id='tbl_out'),
 ])
 
-@callback(Output('tbl_out', 'children'), Input('tbl', 'active_cell'))
-def update_graphs(active_cell):
-    return str(active_cell) if active_cell else "Click the table"
+@callback(
+    # Output('unique_tickers', 'children'),
+    Output('tbl', 'children'),
+    Input('submit_btn', 'n_clicks'),
+    State('mktCapMin_input', 'value'),
+    State(component_id='div_yield_recent_input', component_property='value'),
+    State('StochD_input', 'value'),
+    State('StochK_input', 'value'),
+    State('macd_macd_input', 'value'),
+    State('macd_signal_input', 'value'),
+)
+def update_graphs_by_filter(n_clicks, mktCapMin, div_yield_recent, StochD, StochK, macd_macd, macd_signal):
+    if n_clicks == 0:
+        return 'loading...'
+    ListOfTickers = tradingView(mktCapMin, div_yield_recent, StochD, StochK, macd_macd, macd_signal)[:3]
+    print(ListOfTickers)
+    bigDF = df_builderList(ListOfTickers, daysOut_start, daysOut_end)
+
+    df = bigDF
+
+    return html.Div([
+        dcc.Dropdown(id='unique_tickers',
+            options=ListOfTickers,
+            value=ListOfTickers[0],
+            multi=True),
+        dash_table.DataTable(
+            df.to_dict('records'),
+            [{"name": i, "id": i} for i in df.columns],
+            filter_action='native',
+        )
+    ])
+
 
 if __name__ == "__main__":
     app.run_server(debug=True)
