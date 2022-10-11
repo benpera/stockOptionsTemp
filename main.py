@@ -420,7 +420,7 @@ def fairValue_hist(ticker):
     testPrice_cols = []
 
     for index, row in eps1.iterrows():
-        #retrieving testPrice from Past
+        #retrieving testPrice from Past #change to 30-60 days average
         testPriceDateStart = row['fiscalDateEnding'] + relativedelta(months=+3)
         testPriceDateEnd = row['fiscalDateEnding'] + relativedelta(months=+4)
         df = yq_ticker.history(period='6y', interval='1d')
@@ -447,7 +447,8 @@ def fairValue_hist(ticker):
     eps1['reportedEPS'] = eps1['reportedEPS'].astype(float)
     eps1['p/e'] = eps1['testPrice']/eps1['reportedEPS']
     eps1['avgP/E'] = eps1['p/e'].mean()
-    currentYrEstimate = StockDetail('AAPL').get_earnings_trend()['currentYr']['current']
+    #current yr estimate
+    currentYrEstimate = StockDetail('HRB').get_earnings_trend()['currentYr']['current']
     eps1['currentYrEstimate'] = currentYrEstimate
     eps1['FairValue'] = eps1['avgP/E'] * eps1['currentYrEstimate']
     
@@ -616,42 +617,25 @@ tradingFilterValues = {
     'macd_signal': 0,
 }
 
-# PLOTLY_LOGO = "https://images.plot.ly/logo/new-branding/plotly-logomark.png"
 
+app = Dash(external_stylesheets=[dbc.themes.BOOTSTRAP])
 
-navbar = dbc.Navbar(
-    dbc.Container(
-        [
-            html.A(
-                # Use row and col to control vertical alignment of logo / brand
-                dbc.Row(
-                    [
-                        # dbc.Col(html.Img(src=PLOTLY_LOGO, height="30px")),
-                        dbc.Col(dbc.NavbarBrand("Navbar", className="ms-2")),
-                    ],
-                    align="center",
-                    className="g-0",
-                ),
-                href="https://plotly.com",
-                style={"textDecoration": "none"},
-            ),
-            dbc.NavbarToggler(id="navbar-toggler", n_clicks=0),
-        ]
-    ),
+navbar = dbc.NavbarSimple(
+    
+    brand="Welcome To Leonardo",
+    brand_href="#",
     color="dark",
     dark=True,
 )
 
-
-app = Dash(external_stylesheets=[dbc.themes.BOOTSTRAP])
-
 app.layout = dbc.Container([
+    html.Div(navbar),
     html.Div([
-        html.P('Market Cap Minimum:'),
+        html.P('Market Cap:'),
         dcc.Input(id='mktCapMin_input',
                 type='number',
                 value=tradingFilterValues['mktCapMin']),
-        html.P('dividend yield:'),
+        html.P('Dividend Yield:'),
         dcc.Dropdown(id='div_yield_recent_input',
                 options=divYieldIputOptions,
                 value=tradingFilterValues['div_yield_recent']),
@@ -663,17 +647,18 @@ app.layout = dbc.Container([
         dcc.Input(id='StochK_input',
                 type='number',
                 value=tradingFilterValues['StochK']),
-        html.P('Macd'),
+        html.P('Macd:'),
         dcc.Input(id='macd_macd_input',
                 type='number',
                 value=tradingFilterValues['macd_macd']),
-        html.P('Macd Signal'),
+        html.P('Macd Signal:'),
         dcc.Input(id='macd_signal_input',
                 type='number',
                 value=tradingFilterValues['macd_signal']),
         html.Button('Submit', id='submit_btn', n_clicks=0)
     ]),
    
+    dbc.Label('Click a cell in the table:'),
     html.Div(id='tbl'),
     # dash_table.DataTable(df.to_dict('records'),[{"name": i, "id": i} for i in df.columns], id='tbl'),
     dbc.Alert(id='tbl_out'),
@@ -707,7 +692,12 @@ def update_graphs_by_filter(n_clicks, mktCapMin, div_yield_recent, StochD, Stoch
         dash_table.DataTable(
             df.to_dict('records'),
             [{"name": i, "id": i} for i in df.columns],
+            style_header={
+                'backgroundColor': 'solid black',
+                'fontWeight': 'bold'
+            },
             filter_action='native',
+            sort_action='native'
         )
     ])
 
